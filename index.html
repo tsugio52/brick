@@ -33,9 +33,9 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--bg);color:var(--
 button{font-family:var(--f-body);font-weight:700;font-size:13px;color:var(--ink);background:var(--panel);border:1px solid var(--panel-line);border-radius:6px;padding:8px 12px;cursor:pointer;backdrop-filter:blur(6px)}
 button:hover{border-color:rgba(255,240,215,.35)}
 button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-#bottom{left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;width:min(440px,calc(100vw - 32px))}
-.pick{display:flex;background:var(--panel);border:1px solid var(--panel-line);border-radius:8px;padding:4px;gap:4px;backdrop-filter:blur(6px)}
-.pick button{background:transparent;border:0;border-radius:5px;padding:8px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:132px}
+#bottom{left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:10px;width:min(640px,calc(100vw - 32px))}
+.pick{display:grid;grid-template-columns:repeat(4,auto);background:var(--panel);border:1px solid var(--panel-line);border-radius:8px;padding:4px;gap:4px;backdrop-filter:blur(6px)}
+.pick button{background:transparent;border:0;border-radius:5px;padding:8px 12px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
 .pick button em{font-style:normal;font-family:var(--f-num);font-weight:500;font-size:10.5px;color:var(--ink-dim)}
 .pick button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 .pick button[aria-pressed="true"] em{color:rgba(29,23,18,.7)}
@@ -44,7 +44,8 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .hint{font-size:12px;color:var(--ink-dim);text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.6)}
 @media (max-width:520px){
   .title{font-size:18px}
-  .pick button{min-width:0;padding:7px 10px}
+  .pick{grid-template-columns:repeat(2,1fr);width:100%}
+  .pick button{padding:7px 10px}
   .stat b{font-size:16px}
 }
 </style>
@@ -69,8 +70,10 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 <div class="hud" id="bottom">
   <div class="pick" role="group" aria-label="投げるもの">
-    <button id="kBrick" type="button" aria-pressed="true">赤レンガ<em>210×100×60 · 2.4 kg</em></button>
-    <button id="kBlock" type="button" aria-pressed="false">空洞ブロック<em>390×190×150 · 12 kg</em></button>
+    <button data-kind="brick" type="button" aria-pressed="true">赤レンガ<em>210×100×60 · 2.3 kg</em></button>
+    <button data-kind="block" type="button" aria-pressed="false">空洞ブロック<em>390×190×150 · 11.5 kg</em></button>
+    <button data-kind="pot" type="button" aria-pressed="false">素焼き鉢<em>7号 Ø210 · 1.8 kg</em></button>
+    <button data-kind="potSoil" type="button" aria-pressed="false">鉢 + 培養土<em>7号 · 4.7 kg</em></button>
   </div>
   <div class="meter" aria-hidden="true"><i id="meter"></i></div>
   <div class="hint" id="hint">狙う場所を押し続けて力をためる → 離して投げる</div>
@@ -228,9 +231,48 @@ function asphaltTex(){
   return c;
 }
 
+function potOuterTex(){
+  const S=512, c=makeCanvas(S,S), g=c.getContext('2d');
+  g.fillStyle='#b5673f'; g.fillRect(0,0,S,S);
+  for (let i=0;i<60;i++) blob(g,S,S,Math.random()*S,Math.random()*S,rand(30,120), `hsla(${rand(14,26)},${rand(48,62)}%,${rand(40,56)}%,${rand(.15,.3)})`);
+  // throwing rings left by the wheel
+  for (let y=0;y<S;y+=rand(2,7)){ g.fillStyle=`rgba(${Math.random()<.5?'70,32,16':'235,170,130'},${rand(.03,.1)})`; g.fillRect(0,y,S,rand(1,3)); }
+  specks(g,S,S,7000,()=>`hsla(${rand(14,26)},${rand(40,58)}%,${rand(36,60)}%,${rand(.2,.5)})`,.3,1.1);
+  specks(g,S,S,700,()=>`rgba(60,28,14,${rand(.3,.6)})`,.3,1.1);
+  // pale efflorescence blooms
+  for (let i=0;i<7;i++) blob(g,S,S,Math.random()*S,Math.random()*S,rand(25,70), `rgba(236,224,206,${rand(.08,.18)})`);
+  return c;
+}
+function potInnerTex(){
+  const S=512, c=makeCanvas(S,S), g=c.getContext('2d');
+  g.fillStyle='#c4703f'; g.fillRect(0,0,S,S);
+  for (let i=0;i<40;i++) blob(g,S,S,Math.random()*S,Math.random()*S,rand(20,70), `hsla(${rand(16,26)},${rand(55,68)}%,${rand(42,55)}%,${rand(.2,.4)})`);
+  specks(g,S,S,14000,()=>`hsla(${rand(15,28)},${rand(45,65)}%,${rand(38,62)}%,${rand(.3,.6)})`,.3,1.1);
+  specks(g,S,S,1200,()=>`rgba(70,34,18,${rand(.4,.8)})`,.3,1.2);
+  return c;
+}
+function soilOuterTex(){
+  const S=512, c=makeCanvas(S,S), g=c.getContext('2d');
+  g.fillStyle='#3e2d21'; g.fillRect(0,0,S,S);
+  for (let i=0;i<60;i++) blob(g,S,S,Math.random()*S,Math.random()*S,rand(20,80), `rgba(${rand(25,80)|0},${rand(18,55)|0},${rand(12,35)|0},${rand(.2,.4)})`);
+  stones(g,S,S,2600,()=>`hsla(${rand(18,32)},${rand(25,45)}%,${rand(12,30)}%,${rand(.6,.95)})`,1.2,4);   // crumbs
+  stones(g,S,S,260,()=>`hsla(${rand(18,28)},${rand(35,55)}%,${rand(28,42)}%,.9)`,2,6);                 // bark chips
+  specks(g,S,S,700,()=>`rgba(232,230,220,${rand(.6,.95)})`,1,2.4);                                    // perlite
+  specks(g,S,S,3000,()=>`rgba(15,10,7,${rand(.5,.9)})`,.6,2);
+  return c;
+}
+function soilInnerTex(){
+  const S=512, c=makeCanvas(S,S), g=c.getContext('2d');
+  g.fillStyle='#2f2219'; g.fillRect(0,0,S,S);
+  stones(g,S,S,3200,()=>`hsla(${rand(18,32)},${rand(25,40)}%,${rand(10,24)}%,${rand(.6,.95)})`,1.2,4);
+  specks(g,S,S,500,()=>`rgba(225,222,212,${rand(.5,.9)})`,1,2.2);
+  specks(g,S,S,3000,()=>`rgba(10,7,5,${rand(.5,.9)})`,.6,2);
+  return c;
+}
 const T = {
   brickO: brickOuterTex(), brickI: brickInnerTex(),
-  blockO: blockOuterTex(), blockI: blockInnerTex()
+  blockO: blockOuterTex(), blockI: blockInnerTex(),
+  potO: potOuterTex(), potI: potInnerTex(), soilO: soilOuterTex(), soilI: soilInnerTex()
 };
 function stoneMat(cv, rough, bump){
   const map = toTex(cv,true), b = toTex(cv,false);
@@ -238,7 +280,8 @@ function stoneMat(cv, rough, bump){
 }
 const MATS = {
   brick: [stoneMat(T.brickO,.9,.012), stoneMat(T.brickI,.97,.02)],
-  block: [stoneMat(T.blockO,.95,.018), stoneMat(T.blockI,.98,.025)]
+  block: [stoneMat(T.blockO,.95,.018), stoneMat(T.blockI,.98,.025)],
+  pot:   [stoneMat(T.potO,.86,.006), stoneMat(T.potI,.95,.012), stoneMat(T.soilO,1,.03), stoneMat(T.soilI,1,.03)]
 };
 
 /* ---------------- environment ---------------- */
@@ -271,6 +314,10 @@ world.solver.iterations = 12;
 const mStatic = new CANNON.Material('static'), mStone = new CANNON.Material('stone');
 world.addContactMaterial(new CANNON.ContactMaterial(mStatic, mStone, {friction:.7, restitution:.12}));
 world.addContactMaterial(new CANNON.ContactMaterial(mStone, mStone, {friction:.65, restitution:.06}));
+const mSoil = new CANNON.Material('soil');
+world.addContactMaterial(new CANNON.ContactMaterial(mStatic, mSoil, {friction:.95, restitution:0}));
+world.addContactMaterial(new CANNON.ContactMaterial(mStone, mSoil, {friction:.9, restitution:0}));
+world.addContactMaterial(new CANNON.ContactMaterial(mSoil, mSoil, {friction:.95, restitution:0}));
 const G_WORLD=1, G_OLD=2, G_NEW=4;
 function staticBody(shape, pos, quat){
   const b = new CANNON.Body({mass:0, material:mStatic});
@@ -286,21 +333,45 @@ const removeBody = b => (world.removeBody ? world.removeBody(b) : world.remove(b
 
 /* ---------------- convex polytopes & fracture ---------------- */
 const EPS = 1e-7;
+const SOIL = 2;            // material index base for potting soil faces
+const SOIL_DENS = 1100;
 const BOX_F = [[0,4,6,2],[1,3,7,5],[0,1,5,4],[2,6,7,3],[0,2,3,1],[4,5,7,6]];
 const BOX_N = [V3(-1,0,0),V3(1,0,0),V3(0,-1,0),V3(0,1,0),V3(0,0,-1),V3(0,0,1)];
 function boxPoly(min,max,inner,offset){
   const c = i => V3(i&1?max.x:min.x, i&2?max.y:min.y, i&4?max.z:min.z);
-  return {faces: BOX_F.map((f,i)=>({verts:f.map(c), n:BOX_N[i].clone(), inner:!!(inner&&inner[i])})), offset:offset.clone()};
+  return {faces: BOX_F.map((f,i)=>({verts:f.map(c), n:BOX_N[i].clone(), inner:!!(inner&&inner[i]), m:0})), offset:offset.clone(), m:0};
+}
+function newell(vs){
+  const n = V3(0,0,0), L = vs.length;
+  for (let i=0;i<L;i++){ const a=vs[i], b=vs[(i+1)%L];
+    n.x += (a.y-b.y)*(a.z+b.z); n.y += (a.z-b.z)*(a.x+b.x); n.z += (a.x-b.x)*(a.y+b.y); }
+  return n.normalize();
+}
+// convex polytope from a cross-section ring extruded between two heights
+function ringPoly(bot, top, sideInner, botInner, topInner, m, off, cell){
+  const lists = [bot.slice(), top.slice()], flags = [botInner, topInner];
+  for (let i=0;i<bot.length;i++){ const k=(i+1)%bot.length; lists.push([bot[i],bot[k],top[k],top[i]]); flags.push(sideInner[i]); }
+  const cen = V3(0,0,0); let cnt=0;
+  for (const l of lists) for (const v of l){ cen.add(v); cnt++; }
+  cen.multiplyScalar(1/cnt);
+  const faces = lists.map((vs,i)=>{
+    const n = newell(vs), fc = vs.reduce((s,v)=>s.add(v),V3(0,0,0)).multiplyScalar(1/vs.length);
+    if (n.dot(fc.sub(cen))<0) n.negate();
+    return {verts:vs, n, inner:!!flags[i], m};
+  });
+  return {faces, offset:off.clone(), m, cell};
 }
 function volCent(p){
   if (p._v !== undefined) return p;
   const o = p.faces[0].verts[0]; let vol=0; const C=V3(0,0,0);
-  const a=V3(), b=V3(), cc=V3(), t=V3();
+  const a=V3(), b=V3(), cc=V3(), t=V3(), e1=V3(), e2=V3();
   for (const f of p.faces){
     const vs=f.verts;
     for (let i=1;i<vs.length-1;i++){
       a.subVectors(vs[0],o); b.subVectors(vs[i],o); cc.subVectors(vs[i+1],o);
-      const v = a.dot(t.crossVectors(b,cc))/6;
+      let v = a.dot(t.crossVectors(b,cc))/6;
+      e1.subVectors(vs[i],vs[0]); e2.subVectors(vs[i+1],vs[0]);
+      if (t.crossVectors(e1,e2).dot(f.n) < 0) v = -v;   // winding-independent
       vol += v;
       C.addScaledVector(V3(o.x+vs[0].x+vs[i].x+vs[i+1].x, o.y+vs[0].y+vs[i].y+vs[i+1].y, o.z+vs[0].z+vs[i].z+vs[i+1].z), v/4);
     }
@@ -312,6 +383,35 @@ function aabb(p){
   const mn=V3(Infinity,Infinity,Infinity), mx=V3(-Infinity,-Infinity,-Infinity);
   for (const f of p.faces) for (const v of f.verts){ mn.min(v); mx.max(v); }
   return {min:mn,max:mx};
+}
+// oriented bounding box via principal axes, so thin curved shards get tight colliders
+function jacobi3(A){
+  const a = A.map(r=>r.slice()), V = [[1,0,0],[0,1,0],[0,0,1]];
+  for (let sweep=0; sweep<12; sweep++){
+    for (let p=0;p<2;p++) for (let q=p+1;q<3;q++){
+      if (Math.abs(a[p][q]) < 1e-14) continue;
+      const th = (a[q][q]-a[p][p])/(2*a[p][q]);
+      const tt = (th>=0?1:-1)/(Math.abs(th)+Math.sqrt(th*th+1)), c = 1/Math.sqrt(tt*tt+1), s = tt*c;
+      for (let k=0;k<3;k++){ const kp=a[k][p], kq=a[k][q]; a[k][p]=c*kp-s*kq; a[k][q]=s*kp+c*kq; }
+      for (let k=0;k<3;k++){ const pk=a[p][k], qk=a[q][k]; a[p][k]=c*pk-s*qk; a[q][k]=s*pk+c*qk; }
+      for (let k=0;k<3;k++){ const kp=V[k][p], kq=V[k][q]; V[k][p]=c*kp-s*kq; V[k][q]=s*kp+c*kq; }
+    }
+  }
+  return [0,1,2].map(j=>V3(V[0][j],V[1][j],V[2][j]).normalize());
+}
+function obb(p){
+  const vs=[]; for (const f of p.faces) for (const v of f.verts) vs.push(v);
+  const m = vs.reduce((s,v)=>s.add(v),V3(0,0,0)).multiplyScalar(1/vs.length);
+  const C=[[0,0,0],[0,0,0],[0,0,0]];
+  for (const v of vs){ const d=[v.x-m.x,v.y-m.y,v.z-m.z]; for (let i=0;i<3;i++) for (let j=0;j<3;j++) C[i][j]+=d[i]*d[j]; }
+  const ax = jacobi3(C);
+  if (ax[0].clone().cross(ax[1]).dot(ax[2]) < 0) ax[2].negate();
+  const mn=[Infinity,Infinity,Infinity], mx=[-Infinity,-Infinity,-Infinity];
+  for (const v of vs) for (let i=0;i<3;i++){ const d=v.dot(ax[i]); if (d<mn[i]) mn[i]=d; if (d>mx[i]) mx[i]=d; }
+  const center = V3(0,0,0), half = V3((mx[0]-mn[0])/2,(mx[1]-mn[1])/2,(mx[2]-mn[2])/2);
+  for (let i=0;i<3;i++) center.addScaledVector(ax[i], (mn[i]+mx[i])/2);
+  const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(ax[0],ax[1],ax[2]));
+  return {center, half, q};
 }
 function splitPoly(p,n,d){
   const front=[], back=[], on=[];
@@ -325,8 +425,8 @@ function splitPoly(p,n,d){
       if (ca>=0) fv.push(a); if (ca<=0) bv.push(a); if (ca===0) on.push(a);
       if (ca*cb<0){ const q=a.clone().lerp(b, da/(da-db)); fv.push(q); bv.push(q); on.push(q); }
     }
-    if (hasF && fv.length>=3) front.push({verts:fv,n:f.n,inner:f.inner});
-    if (hasB && bv.length>=3) back.push({verts:bv,n:f.n,inner:f.inner});
+    if (hasF && fv.length>=3) front.push({verts:fv,n:f.n,inner:f.inner,m:f.m});
+    if (hasB && bv.length>=3) back.push({verts:bv,n:f.n,inner:f.inner,m:f.m});
   }
   const pts=[];
   for (const q of on) if (!pts.some(r=>r.distanceToSquared(q)<1e-12)) pts.push(q);
@@ -336,9 +436,9 @@ function splitPoly(p,n,d){
   const w = n.clone().cross(u);
   const tmp=V3();
   pts.sort((A,B)=>{ tmp.subVectors(A,c); const aa=Math.atan2(tmp.dot(w),tmp.dot(u)); tmp.subVectors(B,c); return aa-Math.atan2(tmp.dot(w),tmp.dot(u)); });
-  back.push({verts:pts.slice(), n:n.clone(), inner:true});
-  front.push({verts:pts.slice().reverse(), n:n.clone().negate(), inner:true});
-  return [{faces:front, offset:p.offset.clone()}, {faces:back, offset:p.offset.clone()}];
+  back.push({verts:pts.slice(), n:n.clone(), inner:true, m:p.m});
+  front.push({verts:pts.slice().reverse(), n:n.clone().negate(), inner:true, m:p.m});
+  return [{faces:front, offset:p.offset.clone(), m:p.m}, {faces:back, offset:p.offset.clone(), m:p.m}];
 }
 function randUnit(){ const z=rand(-1,1), a=rand(0,Math.PI*2), r=Math.sqrt(1-z*z); return V3(r*Math.cos(a), r*Math.sin(a), z); }
 function fracture(poly, count, hit, bias){
@@ -358,20 +458,26 @@ function fracture(poly, count, hit, bias){
   }
   return pieces;
 }
-function recenter(p){
-  volCent(p); const c=p._c.clone();
-  const q = {faces:p.faces.map(f=>({verts:f.verts.map(v=>v.clone().sub(c)), n:f.n, inner:f.inner})), offset:p.offset.clone().add(c)};
-  q._v = p._v; q._c = V3(0,0,0);
-  return {poly:q, c};
+// move a group of parts so their shared centre of mass sits at the origin
+function recenterParts(parts){
+  let tv=0; const c=V3(0,0,0);
+  for (const p of parts){ volCent(p); tv+=p._v; c.addScaledVector(p._c, p._v); }
+  c.multiplyScalar(1/Math.max(tv,1e-12));
+  const out = parts.map(p=>{
+    const q = {faces:p.faces.map(f=>({verts:f.verts.map(v=>v.clone().sub(c)), n:f.n, inner:f.inner, m:f.m})), offset:p.offset.clone().add(c), m:p.m, cell:p.cell};
+    q._v = p._v; q._c = p._c.clone().sub(c);
+    return q;
+  });
+  return {parts:out, c};
 }
 
 /* ---------------- geometry from polytopes ---------------- */
 function partsGeometry(parts, tile){
-  const out=[[],[],[]], inn=[[],[],[]];
+  const B = [0,1,2,3].map(()=>[[],[],[]]);
   const e1=V3(), e2=V3(), cr=V3();
   for (const p of parts) for (const f of p.faces){
     const n=f.n, ax=Math.abs(n.x)>Math.abs(n.y)?(Math.abs(n.x)>Math.abs(n.z)?0:2):(Math.abs(n.y)>Math.abs(n.z)?1:2);
-    const tgt = f.inner?inn:out, vs=f.verts;
+    const tgt = B[(f.m||0) + (f.inner?1:0)], vs=f.verts;
     for (let i=1;i<vs.length-1;i++){
       let a=vs[0], b=vs[i], c=vs[i+1];
       e1.subVectors(b,a); e2.subVectors(c,a); cr.crossVectors(e1,e2);
@@ -385,19 +491,23 @@ function partsGeometry(parts, tile){
     }
   }
   const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(out[0].concat(inn[0]),3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(out[1].concat(inn[1]),3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(out[2].concat(inn[2]),2));
-  g.addGroup(0, out[0].length/3, 0); g.addGroup(out[0].length/3, inn[0].length/3, 1);
+  const P=[], N=[], U=[]; let start=0;
+  B.forEach((b,i)=>{ const cnt=b[0].length/3; if (cnt){ g.addGroup(start,cnt,i); start+=cnt; P.push(...b[0]); N.push(...b[1]); U.push(...b[2]); } });
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P,3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(N,3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(U,2));
   g.computeBoundingSphere();
   return g;
 }
 
 /* ---------------- kinds ---------------- */
 const KIND = {
-  brick:{ density:1850, tile:.34, thr:6.5, vmin:5, vmax:24, dust:0xb07158, freq:2600 },
-  block:{ density:2000, tile:.42, thr:4.8, vmin:3.5, vmax:13, dust:0xbab7ae, freq:1300 }
+  brick:  { mat:'brick', density:1850, tile:.34, thr:6.5, vmin:5,   vmax:24, dust:0xb07158, freq:2600 },
+  block:  { mat:'block', density:2000, tile:.42, thr:4.8, vmin:3.5, vmax:13, dust:0xbab7ae, freq:1300 },
+  pot:    { mat:'pot',   density:1750, tile:.30, thr:3.0, vmin:4,   vmax:20, dust:0xc98d6b, freq:3400, ring:true },
+  potSoil:{ mat:'pot',   density:1750, tile:.30, thr:3.0, vmin:3.5, vmax:15, dust:0xc98d6b, freq:3400, ring:true, soil:true }
 };
+const SOIL_DUST = 0x6b5442;
 function brickParts(off){
   return [boxPoly(V3(-.105,-.03,-.05), V3(.105,.03,.05), null, off)];
 }
@@ -412,6 +522,33 @@ function blockParts(off){
   for (const x of [-L, -w/2, L-w]) parts.push(boxPoly(V3(x,-H,-Tz+s), V3(x+w,H,Tz-s), webIn, off));
   return parts;
 }
+// No.7 unglazed terracotta pot (7号 素焼き鉢): Ø210 top, rolled rim band, tapered wall, drain hole
+const POT = {N:14, H:.185, Rb:.068, Rt:.105, t:.009, rimH:.03, rimOut:.006, base:.011, hole:.015, ROWS:4};
+function potParts(off, withSoil){
+  const {N,H,Rb,Rt,t,rimH,rimOut,base,hole} = POT;
+  const y0=-H/2, y3=H/2, yR=y3-rimH, yM=y0+(yR-y0)*.48;
+  const R = y => Rb+(Rt-Rb)*(y-y0)/H;
+  const P = (r,a,y) => V3(r*Math.cos(a), y, r*Math.sin(a));
+  const parts = [];
+  for (let i=0;i<N;i++){
+    const a0=i/N*Math.PI*2, a1=(i+1)/N*Math.PI*2, rf=R(y0)-t;
+    const floor = y => [P(hole,a0,y), P(rf,a0,y), P(rf,a1,y), P(hole,a1,y)];
+    parts.push(ringPoly(floor(y0), floor(y0+base), [1,1,1,0], 0, 0, 0, off, {i, j:0}));
+    const wall = (y,ex) => [P(R(y)-t,a0,y), P(R(y)+ex,a0,y), P(R(y)+ex,a1,y), P(R(y)-t,a1,y)];
+    parts.push(ringPoly(wall(y0,0),  wall(yM,0),  [1,0,1,0], 0, 1, 0, off, {i, j:1}));
+    parts.push(ringPoly(wall(yM,0),  wall(yR,0),  [1,0,1,0], 1, 1, 0, off, {i, j:2}));
+    parts.push(ringPoly(wall(yR,rimOut), wall(y3,rimOut), [1,0,1,0], 0, 0, 0, off, {i, j:3}));
+  }
+  if (withSoil){
+    const yb=y0+base+.001, yt=y3-.024, ring=[], ringT=[];
+    for (let i=0;i<N;i++){ const a=i/N*Math.PI*2; ring.push(P(R(yb)-t-.0015,a,yb)); ringT.push(P(R(yt)-t-.0015,a,yt)); }
+    parts.push(ringPoly(ring, ringT, new Array(N).fill(1), 1, 0, SOIL, off, null));
+  }
+  return parts;
+}
+function partsFor(k, off){
+  return k==='brick' ? brickParts(off) : k==='block' ? blockParts(off) : potParts(off, !!KIND[k].soil);
+}
 
 /* ---------------- pieces ---------------- */
 const pieces = [];   // everything thrown or broken off
@@ -419,21 +556,32 @@ let fragCount = 0, thrown = 0, broken = 0;
 const breakQueue = [];
 let sim = 0;
 
-function makePiece(kind, parts, gen, shrink){
+function makePiece(kind, parts, gen, shrink, intactPot){
   const K = KIND[kind];
-  let vol = 0; for (const p of parts) vol += volCent(p)._v;
-  const mass = Math.max(.004, vol*K.density);
-  const body = new CANNON.Body({mass, material:mStone});
-  for (const p of parts){
-    const bb = aabb(p), half = bb.max.clone().sub(bb.min).multiplyScalar(.5*shrink), c = bb.max.clone().add(bb.min).multiplyScalar(.5);
-    body.addShape(new CANNON.Box(new CANNON.Vec3(Math.max(half.x,.004),Math.max(half.y,.004),Math.max(half.z,.004))), new CANNON.Vec3(c.x,c.y,c.z));
+  let vol = 0, mass = 0;
+  for (const p of parts){ const v = volCent(p)._v; vol += v; mass += v*(p.m===SOIL ? SOIL_DENS : K.density); }
+  mass = Math.max(.004, mass);
+  const soil = parts.every(p=>p.m===SOIL);
+  const body = new CANNON.Body({mass, material: soil ? mSoil : mStone});
+  if (intactPot){
+    // the whole pot rides on one tapered cylinder until it breaks
+    const cyl = new CANNON.Cylinder(POT.Rt+POT.rimOut, POT.Rb, POT.H, 16);
+    const q = new CANNON.Quaternion(); q.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
+    body.addShape(cyl, new CANNON.Vec3(0,0,0), q);
+  } else {
+    for (const p of parts){
+      const o = obb(p);
+      const h = o.half.multiplyScalar(shrink);
+      body.addShape(new CANNON.Box(new CANNON.Vec3(Math.max(h.x,.003),Math.max(h.y,.003),Math.max(h.z,.003))),
+        new CANNON.Vec3(o.center.x,o.center.y,o.center.z), new CANNON.Quaternion(o.q.x,o.q.y,o.q.z,o.q.w));
+    }
   }
-  body.linearDamping = .01; body.angularDamping = .06;
+  body.linearDamping = soil ? .05 : .01; body.angularDamping = soil ? .2 : .06;
   body.sleepSpeedLimit = .12; body.sleepTimeLimit = .5;
-  const mesh = new THREE.Mesh(partsGeometry(parts, K.tile), MATS[kind]);
+  const mesh = new THREE.Mesh(partsGeometry(parts, K.tile), MATS[K.mat]);
   mesh.castShadow = true; mesh.receiveShadow = true;
   scene.add(mesh);
-  const pc = {kind, parts, gen, body, mesh, vol, born:sim, dead:false, isFrag:gen>0};
+  const pc = {kind, parts, gen, body, mesh, vol, soil, born:sim, dead:false, isFrag:gen>0};
   body.addEventListener('collide', e => onCollide(pc, e));
   return pc;
 }
@@ -444,7 +592,10 @@ function killPiece(pc){
   if (pc.isFrag) fragCount--;
 }
 
-function threshold(pc){ return KIND[pc.kind].thr * (1 + .5*pc.gen) * (pc.vol<4e-5 ? 1.4 : 1); }
+function threshold(pc){
+  if (pc.soil) return 2.4 * (1 + .35*pc.gen);
+  return KIND[pc.kind].thr * (1 + .5*pc.gen) * (pc.vol<4e-5 ? 1.4 : 1);
+}
 
 const tmpV = new CANNON.Vec3();
 function onCollide(pc, e){
@@ -452,7 +603,7 @@ function onCollide(pc, e){
   const c = e.contact;
   const s = Math.abs(c.getImpactVelocityAlongNormal());
   const mine = c.bi === pc.body;
-  if (s > threshold(pc) && pc.gen < 4 && pc.vol > 5e-6){
+  if (s > threshold(pc) && pc.gen < (pc.soil ? 2 : 4) && pc.vol > 5e-6){
     const pt = mine ? c.bi.position.vadd(c.ri) : c.bj.position.vadd(c.rj);
     const nAway = mine ? c.ni.negate(tmpV) : c.ni;
     pc.queued = true;
@@ -460,9 +611,52 @@ function onCollide(pc, e){
       v:V3(pc.body.velocity.x,pc.body.velocity.y,pc.body.velocity.z), w:V3(pc.body.angularVelocity.x,pc.body.angularVelocity.y,pc.body.angularVelocity.z)});
   } else if (s > 1.1){
     const pt = mine ? c.bi.position.vadd(c.ri) : c.bj.position.vadd(c.rj);
-    playHit(pc.kind, s, pc.vol);
-    if (s > 3 && pc.vol > 2e-4) puff(V3(pt.x,pt.y,pt.z), V3(0,1,0), pc.kind, 3, s*.1);
+    playHit(pc.kind, s, pc.vol, pc.soil);
+    if (s > 3 && pc.vol > 2e-4) puff(V3(pt.x,pt.y,pt.z), V3(0,1,0), pc.soil ? SOIL_DUST : KIND[pc.kind].dust, 3, s*.1);
   }
+}
+
+// break a pot into curved shards: grow random regions over the (angle × row) grid of cells
+function potShatter(cells, hit, over){
+  const N = POT.N, key = (i,j) => i+','+j, map = new Map();
+  for (const c of cells) map.set(key(c.cell.i,c.cell.j), c);
+  const groups = [], owner = new Map();
+  // cells right at the impact turn into small chips
+  if (over > 1.2){
+    const r = .035 + Math.min(over,10)*.004;
+    for (const c of cells) if (volCent(c)._c.distanceTo(hit) < r){
+      owner.set(c, -1);
+      for (const sh of fracture(c, 2+(Math.random()*2|0), hit, null)) groups.push([sh]);
+    }
+  }
+  const free = cells.filter(c=>!owner.has(c));
+  const k = clamp(Math.round(3 + over*1.1 + rand(0,3)), 3, Math.min(16, free.length));
+  const front = [];
+  for (let g=0; g<k && free.length; g++){
+    let c, tries=0; do { c = free[(Math.random()*free.length)|0]; } while (owner.has(c) && tries++<20);
+    if (owner.has(c)) break;
+    const gi = groups.length; groups.push([c]); owner.set(c, gi); front.push(c);
+  }
+  while (front.length){
+    const idx = (Math.random()*front.length)|0, c = front[idx];
+    const {i,j} = c.cell, gi = owner.get(c);
+    const nb = [[(i+1)%N,j],[(i+N-1)%N,j],[i,j+1],[i,j-1]].map(([a,b])=>map.get(key(a,b))).filter(n=>n && !owner.has(n));
+    if (!nb.length){ front.splice(idx,1); continue; }
+    const n = nb[(Math.random()*nb.length)|0];
+    owner.set(n, gi); groups[gi].push(n); front.push(n);
+  }
+  for (const c of free) if (!owner.has(c)) groups.push([c]);
+  return groups;
+}
+// later breaks of a multi-cell shard: cut the cell set with a random plane
+function planeSplit(cells){
+  const cen = V3(0,0,0); cells.forEach(c=>cen.add(volCent(c)._c)); cen.multiplyScalar(1/cells.length);
+  for (let t=0;t<8;t++){
+    const n = randUnit(), A=[], B=[];
+    for (const c of cells) (n.dot(volCent(c)._c.clone().sub(cen))>0?A:B).push(c);
+    if (A.length && B.length) return [A,B];
+  }
+  return cells.map(c=>[c]);
 }
 
 function breakPiece(job){
@@ -476,45 +670,58 @@ function breakPiece(job){
   killPiece(pc);
   if (pc.gen===0) broken++;
 
-  const isBlock = pc.kind==='block' && pc.gen===0;
-  let made = 0;
-  for (const part of pc.parts){
-    let n;
-    if (pc.gen===0){
-      if (pc.kind==='brick') n = clamp(Math.round(2 + over*1.1 + rand(0,2)), 2, 13);
-      else { const web = part.faces[4].inner; n = web ? clamp(Math.round(rand(0,1.6)+over*.3),1,3) : clamp(Math.round(2 + over*.9 + rand(0,2)),2,8); }
-    } else n = clamp(Math.round(2 + over*.5 + rand(0,1)), 2, 4);
-    // bricks most often snap across the long axis first
-    const bias = (pc.kind==='brick' && pc.gen===0) ? V3(2.2,0,0) : null;
-    const shards = n>1 ? fracture(part, n, hitLocal, bias) : [part];
-    for (const sh of shards){
-      const {poly, c} = recenter(sh);
-      const fp = makePiece(pc.kind, [poly], pc.gen+1, .82);
-      const wc = c.clone().applyQuaternion(quat).add(pos);
-      fp.body.position.set(wc.x,wc.y,wc.z);
-      fp.body.quaternion.set(quat.x,quat.y,quat.z,quat.w);
-      const r = wc.clone().sub(pos);
-      const radial = wc.clone().sub(job.point); const rl = radial.length() || 1; radial.multiplyScalar(1/rl);
-      const vel = job.v.clone().multiplyScalar(.28)
-        .add(job.w.clone().cross(r).multiplyScalar(.5))
-        .addScaledVector(job.nAway, job.speed*rand(.06,.18))
-        .addScaledVector(radial, Math.max(0,over)*rand(.12,.35) + rand(.2,.8))
-        .add(V3(rand(-.3,.3),rand(0,.4),rand(-.3,.3)));
-      fp.body.velocity.set(vel.x,vel.y,vel.z);
-      const av = job.w.clone().multiplyScalar(.4).add(randUnit().multiplyScalar(rand(2,8)+over));
-      fp.body.angularVelocity.set(av.x,av.y,av.z);
-      fp.body.collisionFilterGroup = G_NEW; fp.body.collisionFilterMask = G_WORLD|G_OLD;
-      fp.newUntil = sim + .09;
-      syncMesh(fp);
-      addPiece(fp); made++;
+  const shell = pc.parts.filter(p=>p.m!==SOIL), soilParts = pc.parts.filter(p=>p.m===SOIL);
+  const groups = [];   // each entry: list of parts that become one new body
+  if (K.ring && shell.length > 1){
+    for (const g of (pc.gen===0 ? potShatter(shell, hitLocal, over) : planeSplit(shell))) groups.push(g);
+  } else {
+    for (const part of shell){
+      let n;
+      if (pc.gen===0){
+        if (pc.kind==='brick') n = clamp(Math.round(2 + over*1.1 + rand(0,2)), 2, 13);
+        else { const web = part.faces[4].inner; n = web ? clamp(Math.round(rand(0,1.6)+over*.3),1,3) : clamp(Math.round(2 + over*.9 + rand(0,2)),2,8); }
+      } else n = clamp(Math.round(2 + over*.5 + rand(0,1)), 2, K.ring ? 3 : 4);
+      // bricks most often snap across the long axis first
+      const bias = (pc.kind==='brick' && pc.gen===0) ? V3(2.2,0,0) : null;
+      for (const sh of (n>1 ? fracture(part, n, hitLocal, bias) : [part])) groups.push([sh]);
     }
   }
-  puff(job.point, job.nAway, pc.kind, clamp(8 + made*2, 8, 34), 1 + over*.15);
-  playBreak(pc.kind, clamp(job.speed/18,.2,1), pc.vol, made);
+  for (const sp of soilParts){
+    const n = pc.gen===0 ? clamp(Math.round(8 + over*.8 + rand(0,5)), 8, 18) : clamp(Math.round(2 + over*.4 + rand(0,2)), 2, 4);
+    for (const sh of fracture(sp, n, hitLocal, null)) groups.push([sh]);
+  }
+
+  let made = 0;
+  for (const g of groups){
+    const {parts, c} = recenterParts(g);
+    const isSoil = parts.every(p=>p.m===SOIL);
+    const fp = makePiece(pc.kind, parts, pc.gen+1, K.ring ? .9 : .82);
+    const wc = c.clone().applyQuaternion(quat).add(pos);
+    fp.body.position.set(wc.x,wc.y,wc.z);
+    fp.body.quaternion.set(quat.x,quat.y,quat.z,quat.w);
+    const r = wc.clone().sub(pos);
+    const radial = wc.clone().sub(job.point); const rl = radial.length() || 1; radial.multiplyScalar(1/rl);
+    const spread = isSoil ? .55 : 1;
+    const vel = job.v.clone().multiplyScalar(isSoil ? .4 : .28)
+      .add(job.w.clone().cross(r).multiplyScalar(.5))
+      .addScaledVector(job.nAway, job.speed*rand(.06,.18)*spread)
+      .addScaledVector(radial, (Math.max(0,over)*rand(.12,.35) + rand(.2,.8))*spread)
+      .add(V3(rand(-.3,.3),rand(0,.4),rand(-.3,.3)));
+    fp.body.velocity.set(vel.x,vel.y,vel.z);
+    const av = job.w.clone().multiplyScalar(.4).add(randUnit().multiplyScalar((rand(2,8)+over)*spread));
+    fp.body.angularVelocity.set(av.x,av.y,av.z);
+    fp.body.collisionFilterGroup = G_NEW; fp.body.collisionFilterMask = G_WORLD|G_OLD;
+    fp.newUntil = sim + .09;
+    syncMesh(fp);
+    addPiece(fp); made++;
+  }
+  if (shell.length) puff(job.point, job.nAway, K.dust, clamp(6 + made*2, 6, 30), 1 + over*.15);
+  if (soilParts.length) puff(job.point.clone().addScaledVector(job.nAway,.05), job.nAway, SOIL_DUST, pc.gen===0 ? 34 : 6, 1.2 + over*.12);
+  playBreak(pc.kind, clamp(job.speed/18,.2,1), pc.vol, made, shell.length>0, soilParts.length>0);
   trimDebris();
 }
 
-const MAX_FRAGS = 320;
+const MAX_FRAGS = 360;
 function trimDebris(){
   while (fragCount > MAX_FRAGS){
     const old = pieces.find(p=>p.isFrag);
@@ -531,10 +738,10 @@ const dustTex = (()=>{ const c=makeCanvas(64,64), g=c.getContext('2d'); const gr
   gr.addColorStop(0,'rgba(255,255,255,.9)'); gr.addColorStop(.45,'rgba(255,255,255,.35)'); gr.addColorStop(1,'rgba(255,255,255,0)');
   g.fillStyle=gr; g.fillRect(0,0,64,64); return new THREE.CanvasTexture(c); })();
 const dust = [];
-function puff(p, nrm, kind, n, power){
+function puff(p, nrm, color, n, power){
   for (let i=0;i<n;i++){
     if (dust.length > 160){ const d=dust.shift(); scene.remove(d.s); d.s.material.dispose(); }
-    const m = new THREE.SpriteMaterial({map:dustTex, color:KIND[kind].dust, transparent:true, depthWrite:false, opacity:.5});
+    const m = new THREE.SpriteMaterial({map:dustTex, color, transparent:true, depthWrite:false, opacity:.5});
     const s = new THREE.Sprite(m);
     s.position.copy(p).add(V3(rand(-.05,.05),rand(-.03,.05),rand(-.05,.05)));
     const v = nrm.clone().multiplyScalar(rand(.3,1.4)*power).add(randUnit().multiplyScalar(rand(.3,1.6)*power));
@@ -591,24 +798,45 @@ function noiseBurst(t, dur, type, freq, q, gain){
   src.connect(f); f.connect(g); g.connect(OUT);
   src.start(t, rand(0,1)); src.stop(t+dur+.05);
 }
-function playBreak(kind, k, vol, made){
-  if (!AC || !soundOn) return;
-  const t = AC.currentTime, F = KIND[kind].freq;
-  noiseBurst(t, .09+k*.12, 'bandpass', F*rand(.85,1.2), 1.2, .55*k+.2);   // the crack
-  noiseBurst(t, .35+k*.3, 'lowpass', 420, .7, .5*k+.15);                 // body thud
-  const crackles = Math.min(10, 2+made);
-  for (let i=0;i<crackles;i++) noiseBurst(t+rand(.005,.09), rand(.02,.06), 'bandpass', F*rand(1.2,2.6), 2.5, rand(.08,.25)*k+.04);
+function ping(t, f, dur, gain){
   const o = AC.createOscillator(), g = AC.createGain();
-  o.frequency.setValueAtTime(kind==='block'?95:140,t); o.frequency.exponentialRampToValueAtTime(40,t+.18);
-  g.gain.setValueAtTime(.45*k+.1,t); g.gain.exponentialRampToValueAtTime(.0001,t+.22);
-  o.connect(g); g.connect(OUT); o.start(t); o.stop(t+.25);
+  o.type='sine'; o.frequency.value=f;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+.001); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g); g.connect(OUT); o.start(t); o.stop(t+dur+.02);
 }
-function playHit(kind, s, vol){
+function playBreak(kind, k, vol, made, shell, soil){
+  if (!AC || !soundOn) return;
+  const t = AC.currentTime, K = KIND[kind], F = K.freq;
+  if (shell === undefined) shell = true;
+  if (shell){
+    noiseBurst(t, .09+k*.12, 'bandpass', F*rand(.85,1.2), 1.2, .55*k+.2);   // the crack
+    noiseBurst(t, .35+k*.3, 'lowpass', K.ring?650:420, .7, (K.ring?.3:.5)*k+.15);  // body thud
+    const crackles = Math.min(10, 2+made);
+    for (let i=0;i<crackles;i++) noiseBurst(t+rand(.005,.09), rand(.02,.06), 'bandpass', F*rand(1.2,2.6), 2.5, rand(.08,.25)*k+.04);
+    if (K.ring){
+      // fired clay rings briefly as the shards separate, then tinkles as they land
+      for (let i=0;i<4;i++) ping(t+rand(0,.02), rand(1900,5200), rand(.06,.18), (.09+.12*k)*rand(.6,1));
+      for (let i=0;i<Math.min(8,made);i++) ping(t+rand(.08,.35), rand(2600,6200), rand(.03,.07), rand(.03,.07));
+    } else {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.frequency.setValueAtTime(kind==='block'?95:140,t); o.frequency.exponentialRampToValueAtTime(40,t+.18);
+      g.gain.setValueAtTime(.45*k+.1,t); g.gain.exponentialRampToValueAtTime(.0001,t+.22);
+      o.connect(g); g.connect(OUT); o.start(t); o.stop(t+.25);
+    }
+  }
+  if (soil){
+    noiseBurst(t, .28, 'lowpass', 260, .7, .5*k+.2);            // heavy wet thump
+    noiseBurst(t+.01, .45+k*.3, 'bandpass', 1100, .6, .18*k+.06); // scattering grit
+  }
+}
+function playHit(kind, s, vol, soil){
   if (!AC || !soundOn || hitBudget<=0) return; hitBudget--;
   const t = AC.currentTime, small = vol<6e-5;
   const k = clamp(s/9,0,1) * (small ? .35 : .8);
+  if (soil){ noiseBurst(t, .06, 'lowpass', 500, .7, k*.5); return; }
   noiseBurst(t, small?.035:.08, 'bandpass', (small?3800:KIND[kind].freq)*rand(.8,1.3), small?3:1.5, k*.6);
-  if (!small) noiseBurst(t, .15, 'lowpass', 300, .7, k*.5);
+  if (KIND[kind].ring) ping(t, rand(2400,6000), rand(.03,.08), k*.25);
+  else if (!small) noiseBurst(t, .15, 'lowpass', 300, .7, k*.5);
 }
 
 /* ---------------- aiming & throwing ---------------- */
@@ -647,14 +875,16 @@ function throwNow(){
   const S = spawnPoint();
   const {v} = launchVelocity(S, aim.point, powerSpeed());
   const off = V3(rand(-50,50),rand(-50,50),rand(-50,50));
-  const parts = kind==='brick' ? brickParts(off) : blockParts(off);
-  const pc = makePiece(kind, parts, 0, 1);
+  const isPot = !!KIND[kind].ring;
+  const pc = makePiece(kind, partsFor(kind, off), 0, 1, isPot);
   pc.body.position.set(S.x,S.y,S.z);
   const yaw = Math.atan2(v.x, v.z);
-  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rand(-.25,.25), yaw + Math.PI/2 + rand(-.3,.3), rand(-.2,.2), 'YXZ'));
+  const q = isPot
+    ? new THREE.Quaternion().setFromEuler(new THREE.Euler(rand(-.5,.2), yaw + rand(0,6.3), rand(-.3,.3), 'YXZ'))
+    : new THREE.Quaternion().setFromEuler(new THREE.Euler(rand(-.25,.25), yaw + Math.PI/2 + rand(-.3,.3), rand(-.2,.2), 'YXZ'));
   pc.body.quaternion.set(q.x,q.y,q.z,q.w);
   pc.body.velocity.set(v.x,v.y,v.z);
-  const spin = kind==='brick' ? 7 : 3;
+  const spin = kind==='brick' ? 7 : kind==='block' ? 3 : 2.5;
   const ax = V3(1,0,0).applyQuaternion(q);
   const w = ax.multiplyScalar(-rand(.3,1)*spin).add(randUnit().multiplyScalar(rand(0,spin*.4)));
   pc.body.angularVelocity.set(w.x,w.y,w.z);
@@ -683,19 +913,18 @@ const hand = new THREE.Group(); camera.add(hand);
 let handMesh = null;
 function buildHand(){
   if (handMesh){ hand.remove(handMesh); handMesh.geometry.dispose(); }
-  const parts = kind==='brick' ? brickParts(V3(3,7,1)) : blockParts(V3(3,7,1));
-  handMesh = new THREE.Mesh(partsGeometry(parts, KIND[kind].tile), MATS[kind]);
-  handMesh.rotation.set(.35, .9, .1);
+  handMesh = new THREE.Mesh(partsGeometry(partsFor(kind, V3(3,7,1)), KIND[kind].tile), MATS[KIND[kind].mat]);
+  if (KIND[kind].ring) handMesh.rotation.set(.45, 0, .12); else handMesh.rotation.set(.35, .9, .1);
   hand.add(handMesh);
 }
 buildHand();
 
+const kindBtns = [...document.querySelectorAll('.pick button')];
 function setKind(k){
-  kind = k; $('kBrick').setAttribute('aria-pressed', k==='brick'); $('kBlock').setAttribute('aria-pressed', k==='block'); buildHand();
+  kind = k; kindBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.kind===k)); buildHand();
 }
-$('kBrick').onclick = () => setKind('brick');
-$('kBlock').onclick = () => setKind('block');
-window.addEventListener('keydown', e => { if (e.key==='1') setKind('brick'); if (e.key==='2') setKind('block'); });
+kindBtns.forEach(b => b.onclick = () => setKind(b.dataset.kind));
+window.addEventListener('keydown', e => { const b = kindBtns[+e.key-1]; if (b) setKind(b.dataset.kind); });
 $('bClear').onclick = () => { while (pieces.length) killPiece(pieces[0]); fragCount = 0; };
 $('bSound').onclick = () => { soundOn = !soundOn; initAudio(); updateSoundLabel(); if (soundOn) playBreak(kind, .6, 1e-3, 4); };
 $('bDist').onclick = () => { throwDist = throwDist===6 ? 3 : throwDist===3 ? 10 : 6; $('bDist').textContent = `距離 ${throwDist} m`; placeCamera(); };
@@ -740,7 +969,8 @@ function frame(now){
   }
   const hx = .3*Math.min(1, camera.aspect);
   hand.visible = cooldown <= 0;
-  hand.position.set(hx + power*.05, (kind==='block'?-.36:-.3) + power*.04, (kind==='block'?-.72:-.55) + power*.16);
+  const big = kind!=='brick';
+  hand.position.set(hx + power*.05, (big?-.36:-.3) + power*.04, (big?-.72:-.55) + power*.16);
   hand.rotation.set(-power*.5, 0, -power*.15);
 
   $('sThrown').textContent = thrown; $('sBroken').textContent = broken; $('sFrag').textContent = fragCount;
